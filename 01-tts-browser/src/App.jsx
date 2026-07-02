@@ -1,23 +1,35 @@
 import { useState, useEffect, useRef } from 'react'
 
-const VOICES_PRESETS = [
-  { label: 'Default', lang: '' },
-  { label: 'English (US)', lang: 'en-US' },
-  { label: 'English (UK)', lang: 'en-GB' },
-  { label: 'Spanish', lang: 'es-ES' },
-  { label: 'Portuguese', lang: 'pt-BR' },
-  { label: 'French', lang: 'fr-FR' },
-  { label: 'German', lang: 'de-DE' },
-]
-
-const SAMPLE_TEXTS = [
-  'The Web Speech API lets your browser speak any text out loud, with no server, no API key, and no cost.',
-  'Alexa, Siri, and Google Assistant all use Text to Speech at their core. Now you can too, right in the browser.',
-  'Hello! I am speaking directly from your browser using a built-in Web API that has been available since 2014.',
+const SAMPLES = [
+  {
+    label: 'English',
+    lang: 'en-US',
+    text: 'The Web Speech API lets your browser speak any text out loud, with no server, no API key, and no cost.',
+  },
+  {
+    label: 'Spanish',
+    lang: 'es-ES',
+    text: 'La API de Voz del navegador convierte texto en voz sin necesidad de servidor ni clave de API. Es tecnologia del futuro, disponible hoy.',
+  },
+  {
+    label: 'Portuguese',
+    lang: 'pt-BR',
+    text: 'A API de Fala do navegador transforma texto em voz sem servidor e sem custo. A mesma tecnologia usada pela Alexa e pelo Google Assistente.',
+  },
+  {
+    label: 'French',
+    lang: 'fr-FR',
+    text: "L'API Web Speech permet a votre navigateur de lire n'importe quel texte a voix haute, sans serveur, sans cle API et sans frais.",
+  },
+  {
+    label: 'German',
+    lang: 'de-DE',
+    text: 'Die Web Speech API ermoglicht es Ihrem Browser, jeden Text laut vorzulesen - ohne Server, ohne API-Schlussel und ohne Kosten.',
+  },
 ]
 
 export default function App() {
-  const [text, setText] = useState(SAMPLE_TEXTS[0])
+  const [text, setText] = useState(SAMPLES[0].text)
   const [voices, setVoices] = useState([])
   const [selectedVoice, setSelectedVoice] = useState(null)
   const [rate, setRate] = useState(1)
@@ -33,7 +45,6 @@ export default function App() {
       return
     }
 
-    // Voices load asynchronously in some browsers
     function loadVoices() {
       setVoices(window.speechSynthesis.getVoices())
     }
@@ -104,15 +115,19 @@ export default function App() {
           </p>
         </div>
 
-        {/* Sample text buttons */}
+        {/* Sample text buttons - one per language */}
         <div className="flex flex-wrap gap-2 justify-center">
-          {SAMPLE_TEXTS.map((t, i) => (
+          {SAMPLES.map((s) => (
             <button
-              key={i}
-              onClick={() => setText(t)}
+              key={s.lang}
+              onClick={() => {
+                setText(s.text)
+                const match = voices.find((v) => v.lang.startsWith(s.lang.slice(0, 2)))
+                if (match) setSelectedVoice(match.name)
+              }}
               className="text-xs px-3 py-1.5 rounded-full border border-white/10 text-white/50 hover:text-white hover:border-white/30 transition-colors"
             >
-              Sample {i + 1}
+              {s.label}
             </button>
           ))}
         </div>
