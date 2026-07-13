@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { getAllNotes, saveNote, deleteNote } from './db'
 
 function formatDate(ts) {
@@ -17,8 +17,17 @@ export default function App() {
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [search, setSearch] = useState('')
-  const [saved, setSaved] = useState(true)
+  const [saveStatus, setSaveStatus] = useState('saved') // 'saved' | 'saving' | 'unsaved'
   const [deleting, setDeleting] = useState(false)
+  const [focusMode, setFocusMode] = useState(false)
+  const autoSaveTimer = useRef(null)
+  const selectedRef = useRef(null)
+  const titleRef = useRef('')
+  const contentRef = useRef('')
+
+  selectedRef.current = selected
+  titleRef.current = title
+  contentRef.current = content
 
   const load = useCallback(async () => {
     const all = await getAllNotes()
@@ -28,32 +37,54 @@ export default function App() {
 
   useEffect(() => { load() }, [load])
 
+  // Exit focus mode on Escape
+  useEffect(() => {
+    function onKey(e) {
+      if (e.key === 'Escape' && focusMode) setFocusMode(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [focusMode])
+
+  const doSave = useCallback(async (t, c, sel) => {
+    if (!t.trim() && !c.trim()) return
+    setSaveStatus('saving')
+    const note = { ...(sel || {}), title: t.trim() || 'Untitled', content: c }
+    const id = await saveNote(note)
+    const all = await getAllNotes()
+    setNotes(all)
+    const updated = all.find((n) => n.id === (sel?.id || id))
+    if (updated) setSelected(updated)
+    setSaveStatus('saved')
+  }, [])
+
+  function scheduleAutoSave() {
+    setSaveStatus('unsaved')
+    clearTimeout(autoSaveTimer.current)
+    autoSaveTimer.current = setTimeout(() => {
+      doSave(titleRef.current, contentRef.current, selectedRef.current)
+    }, 1500)
+  }
+
   function selectNote(note) {
+    clearTimeout(autoSaveTimer.current)
     setSelected(note)
     setTitle(note.title)
     setContent(note.content)
-    setSaved(true)
+    setSaveStatus('saved')
   }
 
   function newNote() {
+    clearTimeout(autoSaveTimer.current)
     setSelected(null)
     setTitle('')
     setContent('')
-    setSaved(true)
-  }
-
-  async function handleSave() {
-    if (!title.trim() && !content.trim()) return
-    const note = { ...(selected || {}), title: title.trim() || 'Untitled', content }
-    const id = await saveNote(note)
-    const all = await load()
-    const updated = all.find((n) => n.id === (selected?.id || id))
-    if (updated) setSelected(updated)
-    setSaved(true)
+    setSaveStatus('saved')
   }
 
   async function handleDelete() {
     if (!selected) return
+    clearTimeout(autoSaveTimer.current)
     await deleteNote(selected.id)
     await load()
     newNote()
@@ -76,11 +107,14 @@ export default function App() {
     n.content.toLowerCase().includes(search.toLowerCase())
   )
 
+  const statusLabel = saveStatus === 'saving' ? 'Saving...' : saveStatus === 'unsaved' ? 'Unsaved' : 'Saved'
+  const statusColor = saveStatus === 'saved' ? 'text-emerald-500/50' : 'text-white/30'
+
   return (
-    <div className="min-h-screen bg-gray-950 text-white flex flex-col">
+    <div className={`min-h-screen bg-gray-950 text-white flex flex-col transition-all duration-500 ${focusMode ? 'bg-gray-950' : ''}`}>
 
       {/* Header */}
-      <header className="border-b border-white/[0.06] px-4 py-3 flex items-center justify-between gap-3">
+      <header className={`border-b border-white/[0.06] px-4 py-3 flex items-center justify-between gap-3 transition-opacity duration-300 ${focusMode ? 'opacity-0 pointer-events-none h-0 py-0 overflow-hidden border-0' : ''}`}>
         <div className="flex items-center gap-3">
           <div className="inline-flex items-center gap-2 text-xs font-medium px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
             IndexedDB - zero server, zero cost
@@ -105,10 +139,10 @@ export default function App() {
         </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden" style={{ height: 'calc(100vh - 49px)' }}>
+      <div className="flex flex-1 overflow-hidden" style={{ height: focusMode ? '100vh' : 'calc(100vh - 49px)' }}>
 
         {/* Sidebar */}
-        <aside className="w-64 border-r border-white/[0.06] flex flex-col flex-shrink-0">
+        <aside className={`border-r border-white/[0.06] flex flex-col flex-shrink-0 transition-all duration-300 overflow-hidden ${focusMode ? 'w-0 border-0' : 'w-64'}`}>
           <div className="p-3 border-b border-white/[0.06]">
             <input
               value={search}
@@ -152,14 +186,30 @@ export default function App() {
           <div className="flex items-center justify-between px-6 py-3 border-b border-white/[0.06]">
             <input
               value={title}
-              onChange={(e) => { setTitle(e.target.value); setSaved(false) }}
+              onChange={(e) => { setTitle(e.target.value); scheduleAutoSave() }}
               placeholder="Note title"
               className="flex-1 text-lg font-bold bg-transparent text-white placeholder-white/20 focus:outline-none"
             />
-            <div className="flex items-center gap-2 ml-4 flex-shrink-0">
-              {!saved && (
-                <span className="text-[10px] text-white/30">unsaved</span>
-              )}
+            <div className="flex items-center gap-3 ml-4 flex-shrink-0">
+              <span className={`text-[10px] transition-colors ${statusColor}`}>{statusLabel}</span>
+
+              {/* Focus mode toggle */}
+              <button
+                onClick={() => setFocusMode((f) => !f)}
+                title={focusMode ? 'Exit focus mode (Esc)' : 'Focus mode'}
+                className="text-white/30 hover:text-white/70 transition-colors"
+              >
+                {focusMode ? (
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 9V4.5M9 9H4.5M15 9h4.5M15 9V4.5M9 15H4.5M9 15v4.5M15 15v4.5M15 15h4.5" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+                  </svg>
+                )}
+              </button>
+
               {selected && !deleting && (
                 <button
                   onClick={() => setDeleting(true)}
@@ -175,24 +225,19 @@ export default function App() {
                   <button onClick={() => setDeleting(false)} className="text-xs px-2 py-1 rounded bg-white/10 hover:bg-white/20 transition-colors">No</button>
                 </>
               )}
-              <button
-                onClick={handleSave}
-                disabled={saved && !!selected}
-                className="text-xs px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 font-semibold transition-colors disabled:opacity-40"
-              >
-                Save
-              </button>
             </div>
           </div>
 
           <textarea
             value={content}
-            onChange={(e) => { setContent(e.target.value); setSaved(false) }}
+            onChange={(e) => { setContent(e.target.value); scheduleAutoSave() }}
             placeholder="Start writing..."
-            className="flex-1 resize-none px-6 py-4 bg-transparent text-sm text-white/80 placeholder-white/15 focus:outline-none leading-relaxed"
+            className={`flex-1 resize-none bg-transparent text-white/80 placeholder-white/15 focus:outline-none leading-relaxed transition-all duration-300 ${
+              focusMode ? 'px-16 py-12 text-base max-w-2xl mx-auto w-full' : 'px-6 py-4 text-sm'
+            }`}
           />
 
-          <div className="px-6 py-2 border-t border-white/[0.06] flex items-center justify-between">
+          <div className={`px-6 py-2 border-t border-white/[0.06] flex items-center justify-between transition-opacity duration-300 ${focusMode ? 'opacity-20' : ''}`}>
             <p className="text-[10px] text-white/20">
               {wordCount(content)} words
             </p>
