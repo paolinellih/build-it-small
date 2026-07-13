@@ -189,6 +189,12 @@ export default function App() {
               onChange={(e) => { setTitle(e.target.value); scheduleAutoSave() }}
               placeholder="Note title"
               className="flex-1 text-lg font-bold bg-transparent text-white placeholder-white/20 focus:outline-none"
+              onKeyDown={(e) => {
+                if (e.key === 'Tab') {
+                  e.preventDefault()
+                  document.querySelector('textarea')?.focus()
+                }
+              }}
             />
             <div className="flex items-center gap-3 ml-4 flex-shrink-0">
               <span className={`text-[10px] transition-colors ${statusColor}`}>{statusLabel}</span>
