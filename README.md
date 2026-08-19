@@ -26,10 +26,10 @@ That is it. No global installs, no environment variables (until the later projec
 | # | Project | Tech | Used by | Article |
 |---|---------|------|---------|---------|
 | 01 | [TTS Browser](./01-tts-browser) | Web Speech API | Alexa, Siri, Google Assistant | [Read](https://ismyapp.com/blog/tts-browser) |
-| 02 | STT Browser *(coming soon)* | Web Speech API | Otter.ai, Google Docs | - |
-| 03 | IndexedDB Notes *(coming soon)* | Dexie.js | Notion, Apple Notes | - |
-| 04 | Deploy Free *(coming soon)* | Cloudflare Pages | Vercel, Netlify | - |
-| 05 | Serverless DB *(coming soon)* | Cloudflare D1 | Supabase, Firebase | - |
+| 02 | [STT Browser](./02-stt-browser) | Web Speech API | Otter.ai, Google Docs | - |
+| 03 | [IndexedDB Notes](./03-indexeddb-notes) | IndexedDB | Notion, Apple Notes | - |
+| 04 | [File Editor](./04-file-editor) | File System Access API | VS Code (web), CodeSandbox | - |
+| 05 | [Serverless DB](./05-serverless-db) | Cloudflare D1 | Supabase, Firebase | - |
 | 06 | Scheduled Jobs *(coming soon)* | Cloudflare Workers CRON | AWS Lambda, Azure Functions | - |
 | 07 | Auth in 10 min *(coming soon)* | Clerk | Auth0, AWS Cognito | - |
 | 08 | Send Emails *(coming soon)* | Resend | SendGrid, Mailchimp | - |
